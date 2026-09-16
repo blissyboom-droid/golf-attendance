@@ -2,9 +2,9 @@
 
 A simple web app that turns practice into a friendly, visual habit. Pick your
 name once and it is remembered in this browser, then grow your own grape
-cluster: each practice you log fills one more berry. Fill all 20 and you get a
-little celebration. A monthly leaderboard keeps everyone motivated. All data is
-stored locally in your browser via `localStorage` — no backend required.
+cluster: each practice you log quietly fills one more berry. Keep at it and a
+little surprise awaits. A monthly leaderboard keeps everyone motivated. All data
+is stored locally in your browser via `localStorage` — no backend required.
 
 ## Tech stack
 
@@ -38,16 +38,19 @@ Then open the URL Vite prints (default http://localhost:5173).
   remembers it in this browser. A **Switch person** control lets you change who
   is active at any time. Because you only ever see and edit your own grape,
   there is no way to accidentally log a practice for someone else.
-- **Your grape** — a single large, illustrated grape cluster of 20 berries,
-  drawn entirely as crisp code-drawn SVG (no images). Each logged practice
-  fills one more berry from an empty dashed outline to a richly shaded purple.
+- **Your grape** — a single large, illustrated grape cluster drawn entirely as
+  crisp code-drawn SVG (no images). Each logged practice quietly fills one more
+  berry from an empty dashed outline to a richly shaded purple. There is no
+  visible counter or stated goal — the grape simply grows and the reward is a
+  surprise.
 - **+1 / −1 practice tracking** — tap **+1 practice** to log a session (adds a
-  timestamped entry) or **−1** to undo the most recent one (disabled at 0).
-  A `7 / 20` counter shows current progress.
-- **Completion celebration** — when you fill all 20 berries the cluster glows
-  and a modal pops up once with an inspirational quote and a code-drawn SVG
-  trophy. Practices past 20 keep counting toward the ranking; the grape stays
-  full.
+  timestamped entry). Logging is limited to once per calendar day (local time),
+  so once you have logged today the **+1** button is disabled with a friendly
+  note. **−1** undoes the most recent session (disabled at 0) and has no daily
+  limit, so undoing today's practice re-enables **+1**.
+- **A little surprise** — keep filling berries and eventually the cluster glows
+  and a celebration appears once. Practices past that point keep counting toward
+  the ranking; the grape stays full.
 - **Monthly leaderboard** — a ranked chart of everyone by practice count within
   the current calendar month, labelled with the month and year.
 - **Members** — add and remove players.

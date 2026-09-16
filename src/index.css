@@ -221,17 +221,6 @@ input:focus {
   font-weight: 600;
 }
 
-.badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--grape);
-  color: #fff;
-}
-
 .grape-cluster {
   width: 120px;
   height: 152px;
@@ -265,10 +254,11 @@ input:focus {
   }
 }
 
-.grape-counter {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  color: var(--grape-dark);
+.grape-daily-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+  text-align: center;
 }
 
 .grape-actions {

@@ -4,6 +4,7 @@ import {
   filledBerries,
   isClusterComplete,
   practiceCountForMember,
+  practicedToday,
 } from '../stats'
 import { GrapeCluster } from './GrapeCluster'
 
@@ -17,10 +18,11 @@ interface Props {
 
 /**
  * The single-current-user grape view: one large grape cluster for the current
- * member with their `${filled} / 20` counter and +1 / -1 controls. Because only
- * the current user's own buttons are shown, there is no way to accidentally
- * edit someone else's grape. A ghost "switch person" button returns to the
- * picker.
+ * member with +1 / -1 controls. There is no visible progress counter or goal —
+ * the grape quietly fills as practices are logged and the reward stays a
+ * surprise. Because only the current user's own buttons are shown, there is no
+ * way to accidentally edit someone else's grape. A ghost "switch person" button
+ * returns to the picker.
  */
 export function MyGrape({
   member,
@@ -32,12 +34,12 @@ export function MyGrape({
   const count = practiceCountForMember(practices, member.id)
   const filled = filledBerries(count)
   const complete = isClusterComplete(count)
+  const alreadyToday = practicedToday(practices, member.id)
 
   return (
     <section className={`card my-grape${complete ? ' complete' : ''}`}>
       <div className="my-grape-head">
         <span className="grape-name">{member.name}</span>
-        {complete && <span className="badge">Complete!</span>}
         <button
           type="button"
           className="btn ghost my-grape-switch"
@@ -53,14 +55,13 @@ export function MyGrape({
         glowing={complete}
       />
 
-      <div className="grape-counter">
-        {filled} / {BERRIES_PER_CLUSTER}
-      </div>
-
       <div className="grape-actions">
         <button
           className="btn primary"
-          onClick={() => onAddPractice(member.id)}
+          onClick={() => {
+            if (!practicedToday(practices, member.id)) onAddPractice(member.id)
+          }}
+          disabled={alreadyToday}
         >
           +1 practice
         </button>
@@ -73,6 +74,12 @@ export function MyGrape({
           −1
         </button>
       </div>
+
+      {alreadyToday && (
+        <p className="grape-daily-note">
+          오늘은 이미 기록했어요 🌙 / You've already logged today.
+        </p>
+      )}
     </section>
   )
 }

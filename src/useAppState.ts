@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppState, Member, PracticeSession } from './types'
+import { practicedToday } from './stats'
 import {
   loadCurrentMemberId,
   loadState,
@@ -55,12 +56,25 @@ export function useAppState() {
 
   const addPractice = useCallback((memberId: string, date?: string) => {
     if (!memberId) return
+    // Reference date for the once-per-local-day guard: use the passed `date`
+    // when provided, otherwise "now". Reuse the same Date for the session
+    // timestamp so the guard and the stored value agree.
+    const now = new Date()
+    const refDate = date ? new Date(date) : now
     const session: PracticeSession = {
       id: newId(),
       memberId,
-      date: date ?? new Date().toISOString(),
+      date: date ?? now.toISOString(),
     }
-    setState((s) => ({ ...s, practices: [...s.practices, session] }))
+    // Defense-in-depth: MyGrape already disables the button and re-checks in its
+    // handler, but both derive from the same render's `practices` prop, so two
+    // synchronous clicks could slip through before React re-renders. The state
+    // updater receives the freshest `s.practices`, so re-check here against `s`
+    // and drop the duplicate rather than trusting the caller.
+    setState((s) => {
+      if (practicedToday(s.practices, memberId, refDate)) return s
+      return { ...s, practices: [...s.practices, session] }
+    })
   }, [])
 
   // Undo removes the member's single latest-dated session. The UI only ever

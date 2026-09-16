@@ -42,6 +42,32 @@ export function isClusterComplete(count: number): boolean {
 }
 
 /**
+ * Whether the member already logged a practice on the same LOCAL calendar day
+ * as `ref`. Uses local (not UTC) year/month/day parts so the "once per day"
+ * limit follows the user's own clock; stored dates are full UTC ISO strings so
+ * we parse each via `new Date(...)` rather than comparing ISO prefixes.
+ */
+export function practicedToday(
+  practices: PracticeSession[],
+  memberId: string,
+  ref: Date = new Date(),
+): boolean {
+  const refYear = ref.getFullYear()
+  const refMonth = ref.getMonth()
+  const refDay = ref.getDate()
+
+  return practices.some((p) => {
+    if (p.memberId !== memberId) return false
+    const d = new Date(p.date)
+    return (
+      d.getFullYear() === refYear &&
+      d.getMonth() === refMonth &&
+      d.getDate() === refDay
+    )
+  })
+}
+
+/**
  * Rank members by how many sessions fall in the calendar month of refDate.
  * A session counts when its date is in the same year AND month as refDate.
  * All members are included (even with a 0 count) for completeness, sorted by
