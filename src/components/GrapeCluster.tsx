@@ -22,19 +22,22 @@ interface Props {
 // coordinates in the 100x120 viewBox. Ordered top -> bottom, left -> right
 // so berries fill in a natural reading/growing order.
 const BERRY_POSITIONS: { cx: number; cy: number }[] = (() => {
+  // Rows form a downward-pointing cluster (widest at top). Each row is
+  // horizontally offset by half a spacing from its neighbour so berries
+  // nestle in the gaps rather than stacking directly on top of each other.
   const rows = [
-    { count: 5, y: 42 },
+    { count: 5, y: 40 },
     { count: 4, y: 58 },
-    { count: 5, y: 60 },
-    { count: 3, y: 76 },
-    { count: 2, y: 92 },
-    { count: 1, y: 106 },
+    { count: 4, y: 76 },
+    { count: 3, y: 94 },
+    { count: 2, y: 112 },
+    { count: 2, y: 130 },
   ]
-  const spacing = 15
+  const spacing = 21
   const points: { cx: number; cy: number }[] = []
   for (const row of rows) {
     const rowWidth = (row.count - 1) * spacing
-    const startX = 50 - rowWidth / 2
+    const startX = 60 - rowWidth / 2
     for (let i = 0; i < row.count; i++) {
       points.push({ cx: startX + i * spacing, cy: row.y })
     }
@@ -42,7 +45,7 @@ const BERRY_POSITIONS: { cx: number; cy: number }[] = (() => {
   return points
 })()
 
-const BERRY_RADIUS = 8.5
+const BERRY_RADIUS = 9
 
 export function GrapeCluster({ filled, total, glowing }: Props) {
   const gradientId = useId()
@@ -52,7 +55,7 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
   return (
     <svg
       className={`grape-cluster${glowing ? ' glowing' : ''}`}
-      viewBox="0 0 100 120"
+      viewBox="0 0 120 148"
       role="img"
       aria-label={`Grape cluster: ${filled} of ${total} berries filled`}
     >
@@ -73,7 +76,7 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
 
       {/* Brown stem */}
       <path
-        d="M50 6 C50 16 50 22 50 30"
+        d="M60 4 C60 14 60 22 60 30"
         stroke="#7c5a2e"
         strokeWidth="3"
         strokeLinecap="round"
@@ -82,13 +85,13 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
 
       {/* Green leaf */}
       <path
-        d="M50 14 C60 4 78 4 84 14 C78 22 62 24 50 22 Z"
+        d="M60 12 C70 2 88 2 94 12 C88 20 72 22 60 20 Z"
         fill="#16a34a"
         stroke="#15803d"
         strokeWidth="1"
       />
       <path
-        d="M52 18 C62 14 72 12 82 14"
+        d="M62 16 C72 12 82 10 92 12"
         stroke="#15803d"
         strokeWidth="0.8"
         fill="none"
