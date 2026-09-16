@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppState, AttendanceStatus, GolfEvent, Member } from './types'
+import type {
+  AppState,
+  AttendanceStatus,
+  GolfEvent,
+  Member,
+  PracticeSession,
+} from './types'
 import { loadState, newId, saveState } from './storage'
 
 export function useAppState() {
@@ -34,6 +40,43 @@ export function useAppState() {
         ...s,
         members: s.members.filter((m) => m.id !== id),
         attendance,
+        practices: s.practices.filter((p) => p.memberId !== id),
+      }
+    })
+  }, [])
+
+  const addPractice = useCallback((memberId: string, date?: string) => {
+    if (!memberId) return
+    const session: PracticeSession = {
+      id: newId(),
+      memberId,
+      date: date ?? new Date().toISOString(),
+    }
+    setState((s) => ({ ...s, practices: [...s.practices, session] }))
+  }, [])
+
+  // Undo removes the member's single latest-dated session. The UI only ever
+  // logs sessions via the "+1 practice" button, which calls addPractice with no
+  // `date` (i.e. `new Date().toISOString()`), so the latest-dated session is
+  // always the one just added and always in the current month. The optional
+  // backdated `date` parameter on addPractice is not exercised by any UI path,
+  // so scoping the undo to the displayed month is unnecessary; the global-latest
+  // and month-latest sessions coincide for all real usage.
+  const undoPractice = useCallback((memberId: string) => {
+    setState((s) => {
+      let latestIndex = -1
+      let latestDate = ''
+      s.practices.forEach((p, i) => {
+        if (p.memberId !== memberId) return
+        if (latestIndex === -1 || p.date > latestDate) {
+          latestIndex = i
+          latestDate = p.date
+        }
+      })
+      if (latestIndex === -1) return s
+      return {
+        ...s,
+        practices: s.practices.filter((_, i) => i !== latestIndex),
       }
     })
   }, [])
@@ -87,5 +130,7 @@ export function useAppState() {
     addEvent,
     removeEvent,
     setAttendance,
+    addPractice,
+    undoPractice,
   }
 }
