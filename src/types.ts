@@ -4,20 +4,6 @@ export interface Member {
   createdAt: string
 }
 
-export interface GolfEvent {
-  id: string
-  title: string
-  /** ISO date string (YYYY-MM-DD) */
-  date: string
-  location?: string
-  createdAt: string
-}
-
-export type AttendanceStatus = 'present' | 'absent' | 'maybe'
-
-/** Map of eventId -> memberId -> status */
-export type AttendanceMap = Record<string, Record<string, AttendanceStatus>>
-
 /** A single logged practice/attendance for a member. */
 export interface PracticeSession {
   id: string
@@ -34,7 +20,5 @@ export const BERRIES_PER_CLUSTER = 20
 
 export interface AppState {
   members: Member[]
-  events: GolfEvent[]
-  attendance: AttendanceMap
   practices: PracticeSession[]
 }

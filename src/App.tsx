@@ -3,9 +3,8 @@ import { useAppState } from './useAppState'
 import { practiceCountForMember } from './stats'
 import { BERRIES_PER_CLUSTER } from './types'
 import { Members } from './components/Members'
-import { Events } from './components/Events'
-import { Attendance } from './components/Attendance'
-import { MemberGrapes } from './components/MemberGrapes'
+import { MemberPicker } from './components/MemberPicker'
+import { MyGrape } from './components/MyGrape'
 import { Leaderboard } from './components/Leaderboard'
 import { CelebrationModal } from './components/CelebrationModal'
 
@@ -14,88 +13,75 @@ export default function App() {
     state,
     addMember,
     removeMember,
-    addEvent,
-    removeEvent,
-    setAttendance,
     addPractice,
     undoPractice,
+    currentMemberId,
+    setCurrentMemberId,
   } = useAppState()
 
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  // Resolve the remembered id to an actual member. When it is null or stale the
+  // hook resets it to null, so here we simply fall back to the picker.
+  const currentMember =
+    currentMemberId === null
+      ? null
+      : state.members.find((m) => m.id === currentMemberId) ?? null
 
-  // FIFO queue of member ids waiting to be celebrated. Keyed by id (not name)
-  // so members sharing a display name never collide, and stored as a queue so
-  // multiple members crossing 20 in the same update each get their own modal,
-  // shown one after another.
-  const [celebrationQueue, setCelebrationQueue] = useState<string[]>([])
-  // Track which members have already had their celebration fired so the modal
-  // only appears once per 19 -> 20 crossing, not on every render.
+  // Whether the current member's celebration has already been fired, so the
+  // modal only appears once per 19 -> 20 crossing (not on every render).
   //
-  // Seeded lazily from the *initial* completion state on mount: members who are
-  // already at >=20 when the app loads are treated as already-celebrated, so a
-  // page reload does NOT re-pop the modal for them. A genuine 19 -> 20 crossing
-  // during the session is not in this initial set, so it still fires exactly
-  // once. Undoing below 20 removes the member so a later re-crossing fires again.
-  const celebratedRef = useRef<Set<string>>()
-  if (celebratedRef.current === undefined) {
-    const seeded = new Set<string>()
-    for (const member of state.members) {
-      const count = practiceCountForMember(state.practices, member.id)
-      if (count >= BERRIES_PER_CLUSTER) seeded.add(member.id)
-    }
-    celebratedRef.current = seeded
+  // Re-seeded from the tracked member's completion state whenever that member
+  // changes (mount, first pick, or "switch person"): if they are already at
+  // >=20 they are treated as already-celebrated, so a reload or switching into
+  // an already-complete member does NOT re-pop the modal. A genuine 19 -> 20
+  // crossing during the session is not in the seed, so it still fires exactly
+  // once. Undoing below 20 clears the flag so a later re-crossing fires again.
+  const [celebratingMemberId, setCelebratingMemberId] = useState<string | null>(
+    null,
+  )
+  const celebratedRef = useRef<boolean>()
+  // Track which member the guard is currently seeded for, so we can re-seed it
+  // whenever the tracked identity changes (switch person / first pick) instead
+  // of blanket-clearing to false. `undefined` means "not yet seeded".
+  const watchedMemberIdRef = useRef<string | null | undefined>(undefined)
+  const trackedMemberId = currentMember === null ? null : currentMember.id
+  if (watchedMemberIdRef.current !== trackedMemberId) {
+    // The tracked member changed (including the initial mount). Seed the guard
+    // from THIS member's completion state: an already-complete member is
+    // treated as already-celebrated (no spurious re-fire on switch/first pick),
+    // while a below-20 member starts un-celebrated so a genuine crossing fires.
+    const count =
+      currentMember === null
+        ? 0
+        : practiceCountForMember(state.practices, currentMember.id)
+    celebratedRef.current = count >= BERRIES_PER_CLUSTER
+    watchedMemberIdRef.current = trackedMemberId
   }
 
-  // Detect completion transitions after each state change.
+  // Watch only the current member for a completion transition.
   useEffect(() => {
-    const celebrated = celebratedRef.current!
-    const newlyComplete: string[] = []
-    for (const member of state.members) {
-      const count = practiceCountForMember(state.practices, member.id)
-      const isComplete = count >= BERRIES_PER_CLUSTER
-      if (isComplete && !celebrated.has(member.id)) {
-        celebrated.add(member.id)
-        newlyComplete.push(member.id)
-      } else if (!isComplete && celebrated.has(member.id)) {
-        // Dropped back below 20 (e.g. via undo); allow celebrating again later.
-        celebrated.delete(member.id)
-      }
+    if (currentMember === null) return
+    const count = practiceCountForMember(state.practices, currentMember.id)
+    const isComplete = count >= BERRIES_PER_CLUSTER
+    if (isComplete && !celebratedRef.current) {
+      celebratedRef.current = true
+      setCelebratingMemberId(currentMember.id)
+    } else if (!isComplete && celebratedRef.current) {
+      // Dropped back below 20 (e.g. via undo); allow celebrating again later.
+      celebratedRef.current = false
     }
-    if (newlyComplete.length > 0) {
-      setCelebrationQueue((q) => [...q, ...newlyComplete])
-    }
-  }, [state.practices, state.members])
+  }, [state.practices, currentMember])
 
-  // The member currently celebrating is the head of the queue. Resolve the id
-  // to a member so the modal can display the name while keying by id.
-  const celebratingId = celebrationQueue[0] ?? null
   const celebratingMember =
-    celebratingId === null
+    celebratingMemberId === null
       ? null
-      : state.members.find((m) => m.id === celebratingId) ?? null
+      : state.members.find((m) => m.id === celebratingMemberId) ?? null
 
-  // Drop stale queue entries for members that were removed while queued, so the
-  // queue never stalls on an id with no matching member.
+  // Drop a stale celebration if that member was removed while the modal queued.
   useEffect(() => {
-    if (celebratingId !== null && celebratingMember === null) {
-      setCelebrationQueue((q) => q.slice(1))
+    if (celebratingMemberId !== null && celebratingMember === null) {
+      setCelebratingMemberId(null)
     }
-  }, [celebratingId, celebratingMember])
-
-  // Keep selection valid: default to first event, clear if it was removed.
-  useEffect(() => {
-    if (state.events.length === 0) {
-      if (selectedEventId !== null) setSelectedEventId(null)
-      return
-    }
-    const stillExists = state.events.some((e) => e.id === selectedEventId)
-    if (!stillExists) {
-      setSelectedEventId(state.events[0].id)
-    }
-  }, [state.events, selectedEventId])
-
-  const selectedEvent =
-    state.events.find((e) => e.id === selectedEventId) ?? null
+  }, [celebratingMemberId, celebratingMember])
 
   return (
     <div className="app">
@@ -108,41 +94,34 @@ export default function App() {
       </header>
 
       <main className="stack">
-        <MemberGrapes
-          members={state.members}
-          practices={state.practices}
-          onAddPractice={addPractice}
-          onUndoPractice={undoPractice}
-        />
+        {currentMember === null ? (
+          <MemberPicker
+            members={state.members}
+            onSelect={setCurrentMemberId}
+            onAdd={addMember}
+          />
+        ) : (
+          <>
+            <MyGrape
+              member={currentMember}
+              practices={state.practices}
+              onAddPractice={addPractice}
+              onUndoPractice={undoPractice}
+              onSwitch={() => setCurrentMemberId(null)}
+            />
 
-        <div className="grid">
-          <div className="column">
             <Leaderboard
               members={state.members}
               practices={state.practices}
             />
+
             <Members
               members={state.members}
               onAdd={addMember}
               onRemove={removeMember}
             />
-          </div>
-          <div className="column">
-            <Events
-              events={state.events}
-              selectedEventId={selectedEventId}
-              onAdd={addEvent}
-              onRemove={removeEvent}
-              onSelect={setSelectedEventId}
-            />
-            <Attendance
-              event={selectedEvent}
-              members={state.members}
-              attendance={state.attendance}
-              onSet={setAttendance}
-            />
-          </div>
-        </div>
+          </>
+        )}
       </main>
 
       <footer className="app-footer">
@@ -155,8 +134,7 @@ export default function App() {
         <CelebrationModal
           memberId={celebratingMember.id}
           memberName={celebratingMember.name}
-          // Dequeue the head so the next queued celebration (if any) shows next.
-          onClose={() => setCelebrationQueue((q) => q.slice(1))}
+          onClose={() => setCelebratingMemberId(null)}
         />
       )}
     </div>

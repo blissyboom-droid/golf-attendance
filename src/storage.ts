@@ -1,41 +1,41 @@
 import type { AppState } from './types'
 
-const STORAGE_KEY = 'golf-attendance:v2'
-const LEGACY_STORAGE_KEY = 'golf-attendance:v1'
+const STORAGE_KEY = 'golf-attendance:v3'
+const STORAGE_KEY_V2 = 'golf-attendance:v2'
+const STORAGE_KEY_V1 = 'golf-attendance:v1'
+const CURRENT_MEMBER_KEY = 'golf-attendance:current-member'
 
 export const emptyState: AppState = {
   members: [],
-  events: [],
-  attendance: {},
   practices: [],
+}
+
+/**
+ * Carry forward only the fields that survive into v3 (members + practices),
+ * dropping any legacy events/attendance. Practices default to [] when absent
+ * (e.g. migrating from a v1 blob that predates practice logging).
+ */
+function migrateForward(raw: string): AppState {
+  const parsed = JSON.parse(raw) as Partial<AppState>
+  return {
+    members: parsed.members ?? [],
+    practices: parsed.practices ?? [],
+  }
 }
 
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AppState>
-      return {
-        members: parsed.members ?? [],
-        events: parsed.events ?? [],
-        attendance: parsed.attendance ?? {},
-        practices: parsed.practices ?? [],
-      }
-    }
+    if (raw) return migrateForward(raw)
 
-    // Non-destructive migration: if only the old v1 key exists, carry over
-    // members/events/attendance and start with an empty practices list. The
-    // v1 key is left in place so older builds keep working.
-    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY)
-    if (legacyRaw) {
-      const legacy = JSON.parse(legacyRaw) as Partial<AppState>
-      return {
-        members: legacy.members ?? [],
-        events: legacy.events ?? [],
-        attendance: legacy.attendance ?? {},
-        practices: [],
-      }
-    }
+    // Non-destructive migration: read the newest legacy key that exists and
+    // carry over members/practices only, dropping events/attendance. Legacy
+    // keys are left in place so older builds keep working.
+    const v2Raw = localStorage.getItem(STORAGE_KEY_V2)
+    if (v2Raw) return migrateForward(v2Raw)
+
+    const v1Raw = localStorage.getItem(STORAGE_KEY_V1)
+    if (v1Raw) return migrateForward(v1Raw)
 
     return emptyState
   } catch (err) {
@@ -49,6 +49,28 @@ export function saveState(state: AppState): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch (err) {
     console.error('Failed to save state.', err)
+  }
+}
+
+/** The remembered "who am I" selection for this browser (per-device). */
+export function loadCurrentMemberId(): string | null {
+  try {
+    return localStorage.getItem(CURRENT_MEMBER_KEY)
+  } catch (err) {
+    console.error('Failed to load current member id.', err)
+    return null
+  }
+}
+
+export function saveCurrentMemberId(id: string | null): void {
+  try {
+    if (id === null) {
+      localStorage.removeItem(CURRENT_MEMBER_KEY)
+    } else {
+      localStorage.setItem(CURRENT_MEMBER_KEY, id)
+    }
+  } catch (err) {
+    console.error('Failed to save current member id.', err)
   }
 }
 
