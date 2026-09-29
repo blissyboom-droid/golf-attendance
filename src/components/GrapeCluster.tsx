@@ -9,79 +9,92 @@ interface Props {
 /**
  * A lush purple bunch of grapes drawn entirely in SVG (no bitmap images).
  *
- * The drawing is layered so it always reads as a complete, full bunch:
- *   1. A soft desaturated SILHOUETTE / underdrawing shaped like a real
- *      rounded-triangular cluster (wider at the top, tapering to a point).
- *   2. A fixed set of always-colored BACK berries painted slightly darker and
- *      desaturated for depth. These sit behind and between the front berries
- *      and NEVER depend on `filled`, so even at 0 earned the cluster looks
- *      like a real (if lighter) bunch.
- *   3. Exactly 20 earnable FRONT berries. The first `filled` of them are
- *      painted with rich cartoon shading (volume gradient, inner shadow,
- *      specular highlight); the rest render as faint outlines. They fill one
- *      at a time, top -> bottom / left -> right, as practices are logged.
+ * The bunch shape comes ONLY from the berries themselves — there is no big
+ * background silhouette shape behind them. The whole cluster is TILTED, leaning
+ * like a real bunch hanging from a stem in the upper-left down to a point at
+ * the lower-right.
+ *
+ * Layering / occlusion:
+ *   - Every berry (decorative + earnable) is drawn with a FULLY OPAQUE fill and
+ *     painted STRICTLY back-to-front, so each nearer berry cleanly and
+ *     completely covers the ones behind it. A filled berry always reads as one
+ *     clean solid berry with no other berry's outline showing on top of it.
+ *   - A modest overlap lets the berries nestle together like a bunch without
+ *     piling so heavily that hidden outlines poke through.
+ *
+ * Two kinds of berries:
+ *   - Always-colored decorative BACK berries (never depend on `filled`) that
+ *     sit deepest and darkest, so even at 0 earned the cluster already looks
+ *     like a real (if darker) bunch.
+ *   - Exactly 20 earnable FRONT berries. The first `filled` of them are painted
+ *     with rich cartoon shading (volume gradient, inner shadow, bold white
+ *     highlight); the rest render as light SOLID empty berries. They fill one
+ *     at a time, from the deep top of the bunch toward the lower tip, as
+ *     practices are logged.
  *
  * When `glowing` is true the whole cluster gets a soft pulsing glow via CSS
- * (`.grape-cluster.glowing`) plus the SVG glow filter, so the completion
- * payoff still triggers when all 20 front berries are filled.
+ * (`.grape-cluster.glowing`) plus the SVG glow filter, so the completion payoff
+ * still triggers when all 20 earnable berries are filled.
  *
  * Everything is code-drawn vector art so it stays crisp at the ~240px hero
  * size. No visible number/counter is ever rendered — the goal stays secret.
  */
 
-// Exactly 20 hand-authored FRONT-berry positions in the 120x152 viewBox.
-// They overlap each other (and the back berries) to form a natural
-// rounded-triangular bunch, widest at the top and tapering to a point at the
-// bottom. Ordered top -> bottom, left -> right so they fill in a natural
-// growing order as `filled` increases. Larger radius than the old sparse grid
-// so the berries nestle together into a lush cluster.
-const FRONT_BERRIES: { cx: number; cy: number }[] = [
-  // Row 1 (widest) — 4 berries
-  { cx: 40, cy: 48 },
-  { cx: 54, cy: 46 },
-  { cx: 68, cy: 46 },
-  { cx: 82, cy: 48 },
-  // Row 2 — 4 berries (offset to nestle in the gaps above)
-  { cx: 33, cy: 62 },
-  { cx: 47, cy: 62 },
-  { cx: 61, cy: 62 },
-  { cx: 75, cy: 62 },
-  // Row 3 — 3 berries
-  { cx: 41, cy: 77 },
-  { cx: 55, cy: 78 },
-  { cx: 69, cy: 77 },
-  // Row 4 — 3 berries
-  { cx: 34, cy: 91 },
-  { cx: 48, cy: 92 },
-  { cx: 62, cy: 91 },
-  // Row 5 — 2 berries
-  { cx: 43, cy: 105 },
-  { cx: 57, cy: 105 },
-  // Row 6 — 2 berries
-  { cx: 48, cy: 118 },
-  { cx: 62, cy: 118 },
-  // Row 7 — 1 berry
-  { cx: 55, cy: 130 },
-  // Row 8 (tip) — 1 berry
-  { cx: 58, cy: 141 },
+// Always-colored decorative BACK berries (never depend on `filled`). They sit
+// deepest and darkest so the bunch already reads as a full shape at filled=0.
+// Listed back-to-front (later entries are nearer / drawn on top).
+const BACK_BERRIES: { cx: number; cy: number; r: number }[] = [
+  { cx: 38, cy: 34, r: 9 },
+  { cx: 52, cy: 30, r: 9.5 },
+  { cx: 30, cy: 46, r: 9 },
+  { cx: 46, cy: 44, r: 9.5 },
+  { cx: 61, cy: 42, r: 9 },
+  { cx: 40, cy: 58, r: 9 },
+  { cx: 56, cy: 56, r: 9.5 },
+  { cx: 71, cy: 54, r: 9 },
+  { cx: 52, cy: 70, r: 9 },
+  { cx: 68, cy: 68, r: 9 },
+  { cx: 82, cy: 66, r: 8.5 },
+  { cx: 64, cy: 82, r: 8.5 },
+  { cx: 80, cy: 80, r: 8.5 },
+  { cx: 76, cy: 94, r: 8 },
 ]
 
-// Always-colored BACK berries (never depend on `filled`) that peek out from
-// behind and between the front berries to give the bunch depth. Painted with a
-// darker, desaturated gradient so they read as being in shadow.
-const BACK_BERRIES: { cx: number; cy: number; r: number }[] = [
-  { cx: 47, cy: 53, r: 10 },
-  { cx: 61, cy: 53, r: 10 },
-  { cx: 75, cy: 54, r: 9.5 },
-  { cx: 40, cy: 70, r: 10 },
-  { cx: 54, cy: 70, r: 10 },
-  { cx: 68, cy: 70, r: 10 },
-  { cx: 48, cy: 84, r: 9.5 },
-  { cx: 62, cy: 84, r: 9.5 },
-  { cx: 41, cy: 99, r: 9 },
-  { cx: 55, cy: 99, r: 9 },
-  { cx: 50, cy: 112, r: 8.5 },
-  { cx: 55, cy: 124, r: 8 },
+// Exactly 20 earnable FRONT berries in the 120x152 viewBox, forming a tilted
+// bunch that leans from the upper-left down to a point at the lower-right.
+// Listed AND filled back-to-front (top of the bunch first, tip last) so:
+//   1. berries fill in a natural growing order as `filled` increases, and
+//   2. later-drawn (nearer) berries cleanly occlude earlier (farther) ones,
+//      fixing any bleed-through.
+const FRONT_BERRIES: { cx: number; cy: number }[] = [
+  // Top shoulder of the bunch (widest, upper-left)
+  { cx: 45, cy: 38 },
+  { cx: 59, cy: 36 },
+  { cx: 72, cy: 40 },
+  // Second diagonal band
+  { cx: 38, cy: 51 },
+  { cx: 52, cy: 49 },
+  { cx: 66, cy: 50 },
+  { cx: 79, cy: 52 },
+  // Third band (mass leaning right)
+  { cx: 47, cy: 63 },
+  { cx: 61, cy: 62 },
+  { cx: 75, cy: 64 },
+  // Fourth band
+  { cx: 55, cy: 75 },
+  { cx: 69, cy: 76 },
+  { cx: 83, cy: 78 },
+  // Fifth band (narrowing, drifting lower-right)
+  { cx: 63, cy: 88 },
+  { cx: 77, cy: 90 },
+  // Sixth band
+  { cx: 70, cy: 101 },
+  { cx: 84, cy: 103 },
+  // Tapering toward the tip
+  { cx: 77, cy: 114 },
+  { cx: 84, cy: 126 },
+  // Tip
+  { cx: 82, cy: 138 },
 ]
 
 const FRONT_RADIUS = 11
@@ -91,16 +104,15 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
   const berryFill = useId()
   const berryShade = useId()
   const backBerryFill = useId()
-  const silhouetteFill = useId()
   const leafFill = useId()
   const stemFill = useId()
   const glowId = useId()
   const shadowId = useId()
 
-  // Render exactly the 20 front berries; clamp `filled` into range so a stray
-  // out-of-range value can never paint more or fewer than the authored
-  // positions. `total` (the goal, 20) is read here as an upper bound too, so
-  // the drawing can never exceed the goal or the 20 authored front positions.
+  // Render exactly the 20 earnable berries; clamp `filled` into range so a
+  // stray out-of-range value can never paint more or fewer than the authored
+  // positions. `total` (the goal, 20) is consumed here as an upper bound too,
+  // so the drawing can never exceed the goal or the authored front positions.
   const painted = Math.max(0, Math.min(filled, total, FRONT_BERRIES.length))
 
   return (
@@ -121,7 +133,8 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
         </radialGradient>
 
         {/* Soft inner shadow overlay for the lower edge of each front berry,
-            giving it a rounder, weightier feel. */}
+            giving it a rounder, weightier feel. Opaque-safe: it only darkens
+            the berry's own lower rim and never leaks past the berry circle. */}
         <radialGradient id={berryShade} cx="60%" cy="78%" r="70%">
           <stop offset="0%" stopColor="rgba(76, 29, 149, 0)" />
           <stop offset="72%" stopColor="rgba(76, 29, 149, 0)" />
@@ -129,18 +142,11 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
         </radialGradient>
 
         {/* BACK berries: darker, desaturated so they sit in shadow behind the
-            front berries and read as depth. Always colored. */}
+            front berries and read as depth. Always fully opaque. */}
         <radialGradient id={backBerryFill} cx="40%" cy="32%" r="80%">
           <stop offset="0%" stopColor="#8b6aa8" />
           <stop offset="45%" stopColor="#5f3f86" />
           <stop offset="100%" stopColor="#452b63" />
-        </radialGradient>
-
-        {/* Soft desaturated purple SILHOUETTE / underdrawing so a full-bunch
-            outline is always visible, even before any berry is earned. */}
-        <radialGradient id={silhouetteFill} cx="50%" cy="34%" r="72%">
-          <stop offset="0%" stopColor="#7d5c9e" />
-          <stop offset="100%" stopColor="#4a2f6b" />
         </radialGradient>
 
         {/* Two-tone cartoon leaf gradient. */}
@@ -172,28 +178,30 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
         </radialGradient>
       </defs>
 
-      {/* Soft cluster shadow for grounding. */}
-      <ellipse cx="60" cy="148" rx="34" ry="6" fill={`url(#${shadowId})`} />
+      {/* Soft cluster shadow for grounding, sitting under the tilted tip. */}
+      <ellipse cx="78" cy="146" rx="30" ry="6" fill={`url(#${shadowId})`} />
 
-      {/* Tapered, textured brown stem. */}
+      {/* Tapered, textured brown stem entering from the upper-left, curving
+          into the top-left shoulder of the tilted bunch. */}
       <path
-        d="M58.4 3 C58 12 58.6 21 59.6 29 L61.6 29 C62.4 21 62.6 12 61.6 3 Z"
+        d="M20 6 C24 14 30 22 38 28 C40 30 43 30 45 28 C43 22 36 14 24 4 Z"
         fill={`url(#${stemFill})`}
         stroke="#4a3317"
         strokeWidth="0.6"
+        strokeLinejoin="round"
       />
       {/* Stem highlight streak. */}
       <path
-        d="M59.4 5 C59 13 59.4 21 60 28"
+        d="M23 8 C28 15 33 21 40 26"
         stroke="rgba(255, 236, 200, 0.5)"
         strokeWidth="0.7"
         strokeLinecap="round"
         fill="none"
       />
 
-      {/* Cartoon leaf with a smooth outline. */}
+      {/* Cartoon leaf tucked at the upper-left above the bunch shoulder. */}
       <path
-        d="M60 13 C68 1 88 -1 96 9 C99 15 96 22 88 25 C76 29 63 24 59 19 Z"
+        d="M24 8 C16 -2 -2 -2 -4 10 C-5 17 2 22 12 21 C24 20 30 12 30 6 Z"
         fill={`url(#${leafFill})`}
         stroke="#166534"
         strokeWidth="1"
@@ -201,7 +209,7 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
       />
       {/* Leaf midrib. */}
       <path
-        d="M60.5 18 C70 15 80 12 92 11"
+        d="M27 8 C18 8 8 10 -2 12"
         stroke="#14532d"
         strokeWidth="1"
         strokeLinecap="round"
@@ -209,34 +217,16 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
       />
       {/* Leaf side veins. */}
       <path
-        d="M68 16.4 C70 13.6 72 11.6 74 10.4 M76 14.6 C78 12.4 80 11 82 10.2 M84 12.8 C85.6 11.4 87.4 10.6 89 10.4"
+        d="M20 8.6 C17.4 6.6 14.6 5.4 12 4.8 M14 10.4 C11.4 8.8 8.6 7.8 6 7.6 M8 12.2 C5.6 11.2 3.2 10.8 1 10.8"
         stroke="#15803d"
         strokeWidth="0.6"
         strokeLinecap="round"
         fill="none"
       />
 
-      {/* ---- Fixed decorative BACK layer (never depends on `filled`) ---- */}
-
-      {/* Full-bunch silhouette / underdrawing: rounded-triangular, wider at
-          the top and tapering to a point at the bottom. Always visible. */}
-      <path
-        d="M60 30
-           C40 30 26 38 26 52
-           C26 62 30 68 36 74
-           C30 80 30 90 37 98
-           C33 106 36 116 44 122
-           C44 130 50 138 60 145
-           C70 138 76 130 76 122
-           C84 116 87 106 83 98
-           C90 90 90 80 84 74
-           C90 68 94 62 94 52
-           C94 38 80 30 60 30 Z"
-        fill={`url(#${silhouetteFill})`}
-        opacity="0.9"
-      />
-
-      {/* Always-colored back berries for depth. */}
+      {/* ---- Always-colored decorative BACK berries (never depend on
+          `filled`). Drawn first (deepest) and fully opaque so the earnable
+          berries painted afterward cleanly cover them. ---- */}
       <g>
         {BACK_BERRIES.map((b, i) => (
           <g key={`back-${i}`}>
@@ -260,29 +250,41 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
         ))}
       </g>
 
-      {/* ---- 20 earnable FRONT berries ---- */}
+      {/* ---- 20 earnable FRONT berries, painted back-to-front (array order)
+          so each nearer berry fully occludes the ones behind it. ---- */}
       <g filter={glowing ? `url(#${glowId})` : undefined}>
         {FRONT_BERRIES.map((pos, i) => {
           const isFilled = i < painted
           if (!isFilled) {
-            // Faint empty state: light fill + thin dashed outline, clearly
-            // distinguishable from a painted berry, with no text.
+            // Empty state: light SOLID (opaque) fill + thin SOLID outline so it
+            // is clearly distinguishable from a painted berry yet never reads
+            // as another berry's edge showing through. Because it is opaque and
+            // drawn in depth order, any nearer berry fully covers it.
             return (
-              <circle
-                key={i}
-                cx={pos.cx}
-                cy={pos.cy}
-                r={FRONT_RADIUS}
-                fill="rgba(196, 181, 212, 0.28)"
-                stroke="var(--grape-empty, #c4b5d4)"
-                strokeWidth={1.4}
-                strokeDasharray="3 2"
-              />
+              <g key={i}>
+                <circle
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  r={FRONT_RADIUS}
+                  fill="#ece7f2"
+                  stroke="var(--grape-empty, #c4b5d4)"
+                  strokeWidth={1.2}
+                />
+                {/* Subtle highlight so empty berries still read as round. */}
+                <ellipse
+                  cx={pos.cx - 3.2}
+                  cy={pos.cy - 3.8}
+                  rx={2.6}
+                  ry={1.7}
+                  fill="#ffffff"
+                  transform={`rotate(-32 ${pos.cx - 3.2} ${pos.cy - 3.8})`}
+                />
+              </g>
             )
           }
           return (
             <g key={i}>
-              {/* Base painted berry with volume gradient. */}
+              {/* Base painted berry with volume gradient (opaque). */}
               <circle
                 cx={pos.cx}
                 cy={pos.cy}
@@ -291,20 +293,21 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
                 stroke="var(--grape-dark, #6b21a8)"
                 strokeWidth={0.6}
               />
-              {/* Lower-edge inner shadow for roundness. */}
+              {/* Lower-edge inner shadow for roundness (stays within the
+                  berry, so it never bleeds over neighbors). */}
               <circle
                 cx={pos.cx}
                 cy={pos.cy}
                 r={FRONT_RADIUS}
                 fill={`url(#${berryShade})`}
               />
-              {/* Primary specular highlight. */}
+              {/* Bold primary specular highlight streak. */}
               <ellipse
                 cx={pos.cx - 3.1}
                 cy={pos.cy - 3.7}
-                rx={3.1}
-                ry={2.1}
-                fill="rgba(255, 255, 255, 0.65)"
+                rx={3.6}
+                ry={2.3}
+                fill="rgba(255, 255, 255, 0.85)"
                 transform={`rotate(-32 ${pos.cx - 3.1} ${pos.cy - 3.7})`}
               />
               {/* Subtle secondary highlight near the rim. */}
