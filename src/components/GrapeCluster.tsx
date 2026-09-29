@@ -43,61 +43,68 @@ interface Props {
 // Always-colored decorative BACK berries (never depend on `filled`). They sit
 // deepest and darkest so the bunch already reads as a full shape at filled=0.
 // Listed back-to-front (later entries are nearer / drawn on top).
+// They ride just OUTSIDE / behind the front berries around the bunch outline so
+// a generous arc of each one peeks out (every back berry stays ~33-85% visible)
+// rather than being buried in an interior gap. This adds depth and fullness and
+// keeps the tilted-bunch silhouette reading as one bunch even at filled=0.
 const BACK_BERRIES: { cx: number; cy: number; r: number }[] = [
-  { cx: 38, cy: 34, r: 9 },
-  { cx: 52, cy: 30, r: 9.5 },
-  { cx: 30, cy: 46, r: 9 },
-  { cx: 46, cy: 44, r: 9.5 },
-  { cx: 61, cy: 42, r: 9 },
-  { cx: 40, cy: 58, r: 9 },
-  { cx: 56, cy: 56, r: 9.5 },
-  { cx: 71, cy: 54, r: 9 },
-  { cx: 52, cy: 70, r: 9 },
-  { cx: 68, cy: 68, r: 9 },
-  { cx: 82, cy: 66, r: 8.5 },
-  { cx: 64, cy: 82, r: 8.5 },
-  { cx: 80, cy: 80, r: 8.5 },
-  { cx: 76, cy: 94, r: 8 },
+  { cx: 49, cy: 37, r: 9.5 },
+  { cx: 70, cy: 36, r: 9.5 },
+  { cx: 26, cy: 74, r: 9.5 },
+  { cx: 36, cy: 94, r: 9.5 },
+  { cx: 111, cy: 73, r: 9.5 },
+  { cx: 114, cy: 95, r: 9.5 },
+  { cx: 111, cy: 113, r: 9.5 },
+  { cx: 23, cy: 56, r: 9 },
+  { cx: 58, cy: 113, r: 9.5 },
+  { cx: 71, cy: 130, r: 9.5 },
+  { cx: 117, cy: 131, r: 9 },
+  { cx: 82, cy: 149, r: 9 },
+  { cx: 111, cy: 151, r: 9 },
+  { cx: 89, cy: 168, r: 8.5 },
 ]
 
-// Exactly 20 earnable FRONT berries in the 120x152 viewBox, forming a tilted
-// bunch that leans from the upper-left down to a point at the lower-right.
+// Exactly 20 earnable FRONT berries in the 150x190 viewBox, forming a tilted
+// bunch that leans from the upper-left shoulder down to a point at the
+// lower-right. Centers are spaced roughly ~20px apart (>= 1.6 * FRONT_RADIUS)
+// so adjacent berries only lightly touch: every berry stays about 81-100%
+// visible, with no berry buried behind a nearer neighbor.
 // Listed AND filled back-to-front (top of the bunch first, tip last) so:
 //   1. berries fill in a natural growing order as `filled` increases, and
 //   2. later-drawn (nearer) berries cleanly occlude earlier (farther) ones,
 //      fixing any bleed-through.
 const FRONT_BERRIES: { cx: number; cy: number }[] = [
-  // Top shoulder of the bunch (widest, upper-left)
-  { cx: 45, cy: 38 },
-  { cx: 59, cy: 36 },
-  { cx: 72, cy: 40 },
-  // Second diagonal band
-  { cx: 38, cy: 51 },
-  { cx: 52, cy: 49 },
-  { cx: 66, cy: 50 },
-  { cx: 79, cy: 52 },
-  // Third band (mass leaning right)
-  { cx: 47, cy: 63 },
-  { cx: 61, cy: 62 },
-  { cx: 75, cy: 64 },
-  // Fourth band
-  { cx: 55, cy: 75 },
-  { cx: 69, cy: 76 },
-  { cx: 83, cy: 78 },
-  // Fifth band (narrowing, drifting lower-right)
-  { cx: 63, cy: 88 },
-  { cx: 77, cy: 90 },
-  // Sixth band
-  { cx: 70, cy: 101 },
-  { cx: 84, cy: 103 },
-  // Tapering toward the tip
-  { cx: 77, cy: 114 },
-  { cx: 84, cy: 126 },
+  // Band 1 — top shoulder of the bunch (upper-left)
+  { cx: 40, cy: 46 },
+  { cx: 61, cy: 44 },
+  { cx: 83, cy: 46 },
+  // Band 2 (drifting down and right)
+  { cx: 34, cy: 64 },
+  { cx: 55, cy: 62 },
+  { cx: 75, cy: 62 },
+  { cx: 97, cy: 66 },
+  // Band 3 (widest mass, leaning right)
+  { cx: 44, cy: 81 },
+  { cx: 65, cy: 80 },
+  { cx: 86, cy: 82 },
+  { cx: 107, cy: 84 },
+  // Band 4
+  { cx: 57, cy: 99 },
+  { cx: 78, cy: 99 },
+  { cx: 99, cy: 101 },
+  // Band 5 (narrowing, drifting lower-right)
+  { cx: 70, cy: 117 },
+  { cx: 91, cy: 118 },
+  // Band 6
+  { cx: 83, cy: 135 },
+  { cx: 104, cy: 136 },
+  // Single-file tail toward the tip
+  { cx: 96, cy: 153 },
   // Tip
-  { cx: 82, cy: 138 },
+  { cx: 101, cy: 171 },
 ]
 
-const FRONT_RADIUS = 11
+const FRONT_RADIUS = 12
 
 export function GrapeCluster({ filled, total, glowing }: Props) {
   // Unique ids so multiple <GrapeCluster/> instances never collide.
@@ -118,7 +125,7 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
   return (
     <svg
       className={`grape-cluster${glowing ? ' glowing' : ''}`}
-      viewBox="0 0 120 152"
+      viewBox="0 0 150 190"
       role="img"
       aria-label="Grape cluster"
     >
@@ -179,12 +186,12 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
       </defs>
 
       {/* Soft cluster shadow for grounding, sitting under the tilted tip. */}
-      <ellipse cx="78" cy="146" rx="30" ry="6" fill={`url(#${shadowId})`} />
+      <ellipse cx="101" cy="185" rx="30" ry="6" fill={`url(#${shadowId})`} />
 
-      {/* Tapered, textured brown stem entering from the upper-left, curving
-          into the top-left shoulder of the tilted bunch. */}
+      {/* Tapered, textured brown stem entering from the top, curving into the
+          upper-left shoulder of the tilted bunch. All coords are >= 0. */}
       <path
-        d="M20 6 C24 14 30 22 38 28 C40 30 43 30 45 28 C43 22 36 14 24 4 Z"
+        d="M30 8 C34 16 40 24 48 30 C50 32 53 32 55 30 C53 24 46 16 34 6 Z"
         fill={`url(#${stemFill})`}
         stroke="#4a3317"
         strokeWidth="0.6"
@@ -192,16 +199,17 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
       />
       {/* Stem highlight streak. */}
       <path
-        d="M23 8 C28 15 33 21 40 26"
+        d="M33 10 C38 17 43 23 50 28"
         stroke="rgba(255, 236, 200, 0.5)"
         strokeWidth="0.7"
         strokeLinecap="round"
         fill="none"
       />
 
-      {/* Cartoon leaf tucked at the upper-left above the bunch shoulder. */}
+      {/* Cartoon leaf tucked at the upper-left above the bunch shoulder.
+          Shifted fully inside the viewBox (no negative coords). */}
       <path
-        d="M24 8 C16 -2 -2 -2 -4 10 C-5 17 2 22 12 21 C24 20 30 12 30 6 Z"
+        d="M34 10 C26 0 8 0 6 12 C5 19 12 24 22 23 C34 22 40 14 40 8 Z"
         fill={`url(#${leafFill})`}
         stroke="#166534"
         strokeWidth="1"
@@ -209,7 +217,7 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
       />
       {/* Leaf midrib. */}
       <path
-        d="M27 8 C18 8 8 10 -2 12"
+        d="M37 10 C28 10 18 12 8 14"
         stroke="#14532d"
         strokeWidth="1"
         strokeLinecap="round"
@@ -217,7 +225,7 @@ export function GrapeCluster({ filled, total, glowing }: Props) {
       />
       {/* Leaf side veins. */}
       <path
-        d="M20 8.6 C17.4 6.6 14.6 5.4 12 4.8 M14 10.4 C11.4 8.8 8.6 7.8 6 7.6 M8 12.2 C5.6 11.2 3.2 10.8 1 10.8"
+        d="M30 10.6 C27.4 8.6 24.6 7.4 22 6.8 M24 12.4 C21.4 10.8 18.6 9.8 16 9.6 M18 14.2 C15.6 13.2 13.2 12.8 11 12.8"
         stroke="#15803d"
         strokeWidth="0.6"
         strokeLinecap="round"
